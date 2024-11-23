@@ -1,0 +1,43 @@
+# Node modules and dependencies
+node_modules/
+
+# Build and output directories
+.expo/
+build/
+dist/
+android/
+ios/
+
+# Configuration files
+babel.config.js
+metro.config.js
+*.config.js
+
+# Expo-related environment files
+expo-env.d.ts
+nativewind-env.d.ts
+
+# Generated or external files
+*.lock
+*.min.js
+*.bundle.js
+*.snap
+
+# Assets
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.ttf
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Ignored project files
+.env*
+*.log
