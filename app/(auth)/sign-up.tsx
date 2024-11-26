@@ -16,8 +16,8 @@ export default function SignUp() {
   const onSignUpPress = () => {};
 
   return (
-    <ScrollView className="felx-1 bg-#f1f1f1">
-      <View className="flex-1 bg-#f1f1f1">
+    <ScrollView className="felx-1 bg-[#f1f1f1]">
+      <View className="flex-1 bg-[#f1f1f1]">
         <View className="relative w-full h-[250px]">
           <Image source={images.signUpCar} className="z-0 w-full h-[250px]" />
           <Text className="absolute bottom-5 left-5 capitalize text-neutral-950 font-JakartaBold text-2xl">
@@ -58,7 +58,7 @@ export default function SignUp() {
         </View>
 
         <Link href={"/sign-in"} className="w-full text-lg text-general-200 text-center mt-5">
-          <Text className="first-letter:capitalize mr-2">Already have an account?</Text>
+          <Text className="first-letter:capitalize mr-2">Already have an account?{" "}</Text>
           <Text className="capitalize text-primary-500">log in</Text>
         </Link>
       </View>
