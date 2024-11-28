@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -19,24 +18,31 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "server",
       "favicon": "./assets/images/favicon.png"
     },
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
+    "expo": {
+      "plugins": [
+        "expo-router",
         {
-          "image": "./assets/images/splash.png",
-          "imageWidth": 200,
-          "resizeMode": "contain"
-        }
+          "origin": "https://mydrive.com/"
+        },
+        [
+          "expo-splash-screen",
+          {
+            "backgroundColor": "#232323",
+            "image": "./assets/images/splashh.png",
+            "dark": {
+              "image": "./assets/images/splashh.png",
+              "backgroundColor": "#000000"
+            },
+            "imageWidth": 200,
+            "resizeMode": "contain"
+          }
+        ]
       ]
-    ],
+    },
+    "newArchEnabled": true,
     "experiments": {
       "typedRoutes": true
     }

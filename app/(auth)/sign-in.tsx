@@ -5,7 +5,7 @@ import { icons, images } from "@/constants";
 import { useSignIn } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
 import React, { useState, useCallback } from "react";
-import { Image, ScrollView, Text, View} from "react-native";
+import { Image, ScrollView, Text, View } from "react-native";
 
 export default function SignIn() {
   const { signIn, isLoaded } = useSignIn();
@@ -42,7 +42,7 @@ export default function SignIn() {
       }
     } catch (err: any) {
       // Handle sign-in errors
-      const errorMessage = err.errors?.[0]?.longMessage || "Sign in failed";
+      const errorMessage = err.errors[0]?.longMessage || "Sign in failed";
       setError(errorMessage);
       console.error(JSON.stringify(err, null, 2));
     }

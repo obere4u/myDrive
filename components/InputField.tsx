@@ -24,7 +24,9 @@ export default function InputField({
   ...props
 }: InputFieldProps) {
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      className={`${containerStyle}`}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View className="my-2 w-full">
           <Text className={`capitalize text-lg font-JakartaBoldn mb-3${labelStyle}`}>{label}</Text>
@@ -34,7 +36,7 @@ export default function InputField({
             {icon && <Image source={icon} className={`w-6 h-6 ml-4 ${iconStyle}`} />}
 
             <TextInput
-              className={`p-4 rounded-full font-JakartaSemiBold text-[15px] flex-1 ${inputStyle} text-left`}
+              className={`p-4 rounded-full font-JakartaSemiBold text-[15px] flex-1 ${inputStyle} ${className} text-left`}
               secureTextEntry={secureTextEntry}
               placeholder={placeholder}
               {...props}

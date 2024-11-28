@@ -1,4 +1,11 @@
-import { ImageSourcePropType, ModalBaseProps, TextInputProps, TouchableOpacityProps } from "react-native";
+import {
+  ImageSourcePropType,
+  ModalBaseProps,
+  TextInputProps,
+  TouchableOpacityProps,
+} from "react-native";
+
+import { ImageSourcePropType, KeyboardTypeOptions } from "react-native";
 
 declare interface Driver {
   driver_id: number;
@@ -139,11 +146,19 @@ declare interface DriverCardProps {
 }
 
 declare interface ModalProps extends ModalBaseProps {
-  icon?: ImageSourcePropType; 
+  icon?: ImageSourcePropType;
+  image?: ImageSourcePropType;
   btnTitle?: string;
-  title: string;
-  description: string;
-  onPress: () => void;
+  title?: string;
+  description?: string;
+  onPress?: () => void;
   isVisible: boolean;
-  onBackdropPress: () => void;
+  onBackdropPress?: () => void;
+  onModalHide?: () => void;
+  onChangeText?: (text: string) => void;
+  value?: string;
+  placeholder?: string;
+  label?: string;
+  error?: string;
+  keyboardType?: KeyboardTypeOptions;
 }

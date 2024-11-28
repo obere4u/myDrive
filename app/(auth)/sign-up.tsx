@@ -3,11 +3,11 @@ import InputField from "@/components/InputField";
 import Modal from "@/components/Modal";
 import OAuth from "@/components/OAuth";
 import { icons, images } from "@/constants";
+import { fetchAPI } from "@/lib/fetch";
 import { useSignUp } from "@clerk/clerk-expo";
 import { Link, router } from "expo-router";
 import React, { useState, useCallback } from "react";
 import { Alert, Image, ScrollView, Text, View } from "react-native";
-import { ReactNativeModal } from "react-native-modal";
 
 export default function SignUp() {
   const [form, setForm] = useState({
@@ -52,44 +52,72 @@ export default function SignUp() {
   const onPressVerify = useCallback(async () => {
     if (!isLoaded) return;
 
+    setLoading(true);
     try {
       const completeSignUp = await signUp.attemptEmailAddressVerification({
         code: verification.code,
       });
 
       if (completeSignUp.status === "complete") {
-        //TODO: create a new user in our database
+        // Create a new user in the database
+        await fetchAPI("/(api)/user/", {
+          method: "POST",
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            clerkId: completeSignUp.createdUserId,
+          }),
+        });
+
+        // Activate session
         await setActive({ session: completeSignUp.createdSessionId });
-        setVerification((prev) => ({ ...prev, state: "success" }));
-      } else {
-        // Alert.alert("Error", err.erros?.[0]?.longMessage);
+
         setVerification((prev) => ({
           ...prev,
-          error: "Verification failed",
-          state: "failed",
+          state: "success",
+          error: "",
         }));
-        console.error(JSON.stringify(completeSignUp, null, 2));
+      } else {
+        const errorMessage = "Verification failed. Please try again.";
+        setVerification((prev) => ({
+          ...prev,
+          error: errorMessage,
+          state: "pending",
+        }));
+        Alert.alert("Verification Error", errorMessage);
       }
     } catch (err: any) {
-      setVerification((prev) => ({
-        ...prev,
-        error: err.errors?.[0]?.longMessage || "Verification failed",
-        state: "failed",
-      }));
-      Alert.alert("Error", err.erros[0]?.longMessage);
-      console.error(JSON.stringify(err, null, 2));
+      // Specifically handle incorrect code scenario
+      if (err.errors && err.errors[0]?.longMessage?.includes("Incorrect code")) {
+        setVerification((prev) => ({
+          ...prev,
+          error: "Incorrect verification code. Please try again.",
+          state: "pending",
+        }));
+        Alert.alert("Error", "Incorrect verification code. Please try again.");
+      } else {
+        // Handle other types of errors
+        const errorMessage = err.errors[0]?.longMessage || "An unexpected error occurred";
+        setVerification((prev) => ({
+          ...prev,
+          error: errorMessage,
+          state: "failed",
+        }));
+        Alert.alert("Error", errorMessage);
+      }
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, signUp, verification.code, setActive]);
+  }, [isLoaded, signUp, verification.code, form, setActive]);
 
   const handleVerificationCodeChange = useCallback((code: string) => {
     setVerification((prev) => ({ ...prev, code }));
   }, []);
 
-  // if (loading) {
-  //   return <Text>loading...</Text>
-  // }
+  // TODO: ADD A COOL LOADER
+  if (loading) {
+    return <Text>loading...</Text>;
+  }
   return (
     <ScrollView className="flex-1 bg-[#f1f1f1]">
       <View className="flex-1 bg-[#f1f1f1]">
@@ -141,37 +169,28 @@ export default function SignUp() {
         {/* captcha */}
         {/* verification modal */}
         {/* verification pending */}
-        <ReactNativeModal
+        <Modal
           isVisible={verification.state === "pending"}
-          onModalHide={() => setVerification({ ...verification, state: "success" })}>
-          <View className="bg-[#f1f1f1] rounded-2xl px-7 py-9 min-h-[300px]">
-            <Text className="font-JakartaSemiBold text-3xl capital">Verification</Text>
-            <Text className="text-base text-gray-400 font-Jakarta mt-2 mb-5 first-letter:capitalize">
-              we sent a verification code to {form.email}
-            </Text>
-            <InputField
-              label="code"
-              icon={icons.lock}
-              placeholder="1234"
-              value={verification.code}
-              keyboardType="numeric"
-              onChangeText={handleVerificationCodeChange}
-              className="mt-5"
-            />
-            {verification.error && (
-              <Text className="text-red-500 mt-1 text-sm">{verification.error}</Text>
-            )}
-            <CustomButton title="verify" onPress={onPressVerify} className="mt-6 bg-success-500" />
-          </View>
-        </ReactNativeModal>
+          onModalHide={() => setVerification({ ...verification, state: "success" })}
+          title="verify your email"
+          description={`we sent a verification code to ${form.email}`}
+          label="code"
+          icon={icons.lock}
+          placeholder="1234"
+          value={verification.code}
+          keyboardType="numeric"
+          onChangeText={handleVerificationCodeChange}
+          error={verification.error}
+          btnTitle="verify"
+          onPress={onPressVerify}
+        />
         {/* verification success */}
-        
         <Modal
           isVisible={verification.state === "success"}
           onBackdropPress={() => setVerification((prev) => ({ ...prev, state: "default" }))}
           title="Verified"
           description="You have successfully verified your account"
-          icon={images.check}
+          image={images.check}
           btnTitle="Go to home"
           onPress={() => router.replace("/(root)/(tabs)/home")}
         />
