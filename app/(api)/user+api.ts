@@ -6,7 +6,6 @@ export async function POST(request: Request) {
 
     // Log the entire request body for debugging
     const body = await request.json();
-    console.log("Received body:", body);
 
     const { name, email, clerkId } = body;
 
