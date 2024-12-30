@@ -1,6 +1,5 @@
-// Utility function to format a date string
+// sort ride
 import { Ride } from "@/types/type";
-
 export const sortRides = (rides: Ride[]): Ride[] => {
   const result = rides.sort((a, b) => {
     const dateA = new Date(`${a.created_at}T${a.ride_time}`);
@@ -11,6 +10,7 @@ export const sortRides = (rides: Ride[]): Ride[] => {
   return result.reverse();
 };
 
+// formate time
 export function formatTime(minutes: number): string {
   const formattedMinutes = +minutes?.toFixed(0) || 0;
 
@@ -23,6 +23,7 @@ export function formatTime(minutes: number): string {
   }
 }
 
+// format date
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   const day = date.getDate();
@@ -46,6 +47,7 @@ export function formatDate(dateString: string): string {
   return `${day < 10 ? "0" + day : day} ${month} ${year}`;
 }
 
+// debounce
 export function debounce(func: (...args: any[]) => void, delay: number): (...args: any[]) => void {
   let timeout: NodeJS.Timeout;
 
