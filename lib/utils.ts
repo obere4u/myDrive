@@ -45,3 +45,17 @@ export function formatDate(dateString: string): string {
 
   return `${day < 10 ? "0" + day : day} ${month} ${year}`;
 }
+
+export function debounce(func: (...args: any[]) => void, delay: number): (...args: any[]) => void {
+  let timeout: NodeJS.Timeout;
+
+  return (...args: any[]) => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+
+    timeout = setTimeout(() => {
+      func(...args);
+    }, delay);
+  };
+}

@@ -7,9 +7,10 @@ import { fetchAPI } from "@/lib/fetch";
 import { useSignUp } from "@clerk/clerk-expo";
 import { Link, router } from "expo-router";
 import React, { useState, useCallback } from "react";
-import { Alert, Image, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Image, ScrollView, Text, View } from "react-native";
 
 export default function SignUp() {
+  const baseURL = process.env.EXPO_PUBLIC_BASE_URL;
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -49,27 +50,38 @@ export default function SignUp() {
     }
   }, [form.email, form.password, isLoaded, signUp]);
 
+  // vrifying code
   const onPressVerify = useCallback(async () => {
     if (!isLoaded) return;
 
     setLoading(true);
     try {
+      console.log("Verifying email address...");
       const completeSignUp = await signUp.attemptEmailAddressVerification({
         code: verification.code,
       });
 
       if (completeSignUp.status === "complete") {
-        // Create a new user in the database
-        await fetchAPI("/(api)/user/", {
-          method: "POST",
-          body: JSON.stringify({
-            name: form.name,
-            email: form.email,
-            clerkId: completeSignUp.createdUserId,
-          }),
+        console.log("Verification complete. Creating user in database...");
+        const requestBody = JSON.stringify({
+          name: form.name,
+          email: form.email,
+          clerkId: completeSignUp.createdUserId,
         });
 
-        // Activate session
+        console.log("Fetching:", baseURL + "/(api)/user/");
+        console.log("Request Body:", requestBody);
+
+        await fetchAPI(`${baseURL}/(api)/user/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: requestBody,
+        });
+
+        console.log("fetchAPI working");
+
         await setActive({ session: completeSignUp.createdSessionId });
 
         setVerification((prev) => ({
@@ -87,7 +99,7 @@ export default function SignUp() {
         Alert.alert("Verification Error", errorMessage);
       }
     } catch (err: any) {
-      // Specifically handle incorrect code scenario
+      console.error("Error during verification:", err);
       if (err.errors && err.errors[0]?.longMessage?.includes("Incorrect code")) {
         setVerification((prev) => ({
           ...prev,
@@ -96,7 +108,6 @@ export default function SignUp() {
         }));
         Alert.alert("Error", "Incorrect verification code. Please try again.");
       } else {
-        // Handle other types of errors
         const errorMessage = err.errors[0]?.longMessage || "An unexpected error occurred";
         setVerification((prev) => ({
           ...prev,
@@ -116,7 +127,11 @@ export default function SignUp() {
 
   // TODO: ADD A COOL LOADER
   if (loading) {
-    return <Text>loading...</Text>;
+    return (
+      <View className="w-full h-screen flex items-center justify-between">
+        <ActivityIndicator size={"small"} color={"#212121"} />
+      </View>
+    );
   }
   return (
     <ScrollView className="flex-1 bg-[#f1f1f1]">

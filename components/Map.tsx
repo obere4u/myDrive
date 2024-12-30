@@ -1,205 +1,127 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  PermissionsAndroid,
-  Platform,
-  Text,
-  View,
-  Alert,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-} from "react-native";
-import MapView, { Marker, PROVIDER_DEFAULT, Region } from "react-native-maps";
-import * as Location from "expo-location";
-
-// Define the type for the current position
-type Coordinates = {
-  latitude: number;
-  longitude: number;
-};
-
-const apiKey = process.env.EXPO_PUBLIC_GEOLOCATION_API_KEY;
+import { View, StyleSheet, Animated, ActivityIndicator, Text } from "react-native";
+import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
+import { useDriverStore, useLocationStore } from "@/store";
+import { calculateDriverTimes, calculateRegion, generateMarkersFromData } from "@/lib/map";
+import { Driver, MarkerData } from "@/types/type";
+import { icons } from "@/constants";
+import { useFetch } from "@/lib/fetch";
 
 export default function Map() {
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [currentPosition, setCurrentPosition] = useState<Coordinates | null>(null);
-  const [locationInfo, setLocationInfo] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const baseURL = process.env.EXPO_PUBLIC_BASE_URL;
+  const { data: drivers, loading, error } = useFetch<Driver[]>(baseURL + "/(api)/driver/");
 
-  // Map reference
-  const mapRef = useRef<MapView | null>(null);
+  const { userLongitude, userLatitude, destinationLatitude, destinationLongitude } =
+    useLocationStore();
+  const { selectedDriver, setSelectedDriver, setDrivers } = useDriverStore();
+  const [markers, setMarkers] = useState<MarkerData[]>([]);
 
-  // Fetch location details from Positionstack API
-  const fetchLocationInfo = async ({ latitude, longitude }: Coordinates) => {
-    try {
-      const url = `https://us1.locationiq.com/v1/reverse?key=${apiKey}&lat=${latitude}&lon=${longitude}&format=json`;
-      const response = await fetch(url);
+  // region, the area that is closets to the user within which a driver can be found
+  const region = calculateRegion({
+    userLatitude,
+    userLongitude,
+    destinationLatitude,
+    destinationLongitude,
+  });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} - ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log("Geocoding API Response:", data);
-
-      setLocationInfo(data.display_name || "Location found");
-    } catch (error) {
-      console.error("Error fetching location info:", error);
-      setLocationInfo("Unable to fetch location details");
-    }
-  };
-
-  // Get current position and fetch location info
   useEffect(() => {
-    async function getCurrentLocation() {
-      setIsLoading(true);
-
-      try {
-        // Check if location services are enabled
-        const isLocationServiceEnabled = await Location.hasServicesEnabledAsync();
-        if (!isLocationServiceEnabled) {
-          Alert.alert(
-            "Location Services Disabled",
-            "Please enable location services in your device settings to use this feature.",
-            [{ text: "OK" }],
-          );
-          setErrorMsg("Location services are disabled");
-          setIsLoading(false);
-          return;
-        }
-
-        // Request permissions
-        let { status } = await Location.requestForegroundPermissionsAsync();
-
-        if (status !== "granted") {
-          Alert.alert(
-            "Location Permission Denied",
-            "This feature requires location access. Please grant permission in your device settings.",
-            [{ text: "OK" }],
-          );
-          setErrorMsg("Permission to access location was denied");
-          setIsLoading(false);
-          return;
-        }
-
-        // Get current location
-        let location = await Location.getCurrentPositionAsync({});
-        setLocation(location);
-
-        const { latitude, longitude } = location.coords;
-
-        setCurrentPosition({ latitude, longitude });
-
-        // Fetch location details
-        await fetchLocationInfo({ latitude, longitude });
-      } catch (error) {
-        console.error("Error getting location:", error);
-        Alert.alert(
-          "Location Error",
-          "Unable to retrieve your current location. Please try again.",
-          [{ text: "OK" }],
-        );
-      } finally {
-        setIsLoading(false);
+    if (Array.isArray(drivers)) {
+      if (!userLatitude || !userLongitude || !Array.isArray(drivers)) {
+        return;
       }
+      const newMarkers = generateMarkersFromData({ data: drivers, userLatitude, userLongitude });
+      setMarkers(newMarkers);
     }
+  }, [drivers, userLatitude, userLongitude]);
 
-    getCurrentLocation();
-  }, []);
+  // set drivers
+  useEffect(() => {
+    if (markers.length > 0 && destinationLatitude && destinationLongitude) {
+      calculateDriverTimes({
+        markers,
+        userLatitude,
+        userLongitude,
+        destinationLatitude,
+        destinationLongitude,
+      }).then((drivers) => setDrivers(drivers as MarkerData[]));
+    }
+  }, [markers, destinationLatitude, destinationLongitude]);
 
-  // Render loading or error state
-  if (isLoading) {
+  if (loading || !userLatitude || !userLongitude) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator />
+      <View className="w-full flex items-center justify-center h-full">
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#4CAF50" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       </View>
     );
   }
 
-  // Render when no location is available
-  if (!currentPosition) {
+  if (error) {
+    console.error("Error fetching drivers:", error);
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Location services are required to use this feature.</Text>
-        <Text style={styles.instructionText}>
-          Please ensure: • Location services are enabled • App has location permissions • You are in
-          an area with GPS signal
-        </Text>
+      <View className="w-full flex items-center justify-between">
+        <Text>Error loading drivers: {error || "Unknown error"}</Text>
       </View>
     );
   }
-
-  // Function to animate map to current location
-  const handleReturnToLocationClick = () => {
-    if (mapRef.current && currentPosition) {
-      mapRef.current.animateToRegion({
-        latitude: currentPosition.latitude,
-        longitude: currentPosition.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      });
-    }
-  };
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 rounded-2xl h-[300px]">
       <MapView
+        provider={PROVIDER_DEFAULT}
+        userInterfaceStyle="dark"
         style={styles.map}
-        ref={mapRef} // Attach mapRef here
-        initialRegion={{
-          latitude: currentPosition.latitude,
-          longitude: currentPosition.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}>
-        <Marker coordinate={currentPosition} title="You are here" pinColor="#3B82F6" />
+        tintColor="#212121"
+        showsPointsOfInterest={false}
+        initialRegion={region}
+        showsUserLocation={true}>
+        {markers.map((marker, index) => (
+          <Marker
+            key={marker.id + index}
+            coordinate={{
+              latitude: marker.latitude,
+              longitude: marker.longitude,
+            }}
+            title={marker.title}
+            image={selectedDriver === marker.id ? icons.selectedMarker : icons.marker}
+          />
+        ))}
+        {destinationLatitude && destinationLongitude && (
+          <Marker
+            key="destination"
+            coordinate={{
+              latitude: destinationLatitude,
+              longitude: destinationLongitude,
+            }}
+            title="Destination"
+            image={icons.checkmark}
+          />
+        )}
       </MapView>
-
-      {locationInfo && (
-        <TouchableOpacity onPress={handleReturnToLocationClick} style={styles.locationInfoWrapper}>
-          <Text style={styles.locationInfo}>{locationInfo}</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    height: 300,
-  },
   map: {
     flex: 1,
   },
-  centered: {
-    flex: 1,
+  loaderContainer: {
+    flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
-    padding: 16,
+    padding: 20,
+    borderRadius: 10,
+    width: "100%",
+    alignSelf: "center",
   },
-  errorText: {
-    fontSize: 18,
-    fontWeight: "bold",
+  loadingText: {
+    marginTop: 10,
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "500",
     textAlign: "center",
-    marginBottom: 8,
-  },
-  instructionText: {
-    fontSize: 14,
-    textAlign: "center",
-    color: "#666",
-  },
-  locationInfoWrapper: {
-    position: "absolute",
-    bottom: 10,
-    left: 10,
-  },
-  locationInfo: {
-    backgroundColor: "#3B82F6",
-    color: "white",
-    padding: 8,
-    borderRadius: 5,
-    fontSize: 14,
   },
 });

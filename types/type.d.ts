@@ -8,6 +8,7 @@ import {
 import { ImageSourcePropType, KeyboardTypeOptions } from "react-native";
 
 declare interface Driver {
+  id: number;
   driver_id: number;
   first_name: string;
   last_name: string;
@@ -70,7 +71,7 @@ declare interface ButtonProps extends TouchableOpacityProps {
 }
 
 declare interface GoogleInputProps {
-  icon?: string;
+  icon?: ImageSourcePropType;
   initialLocation?: string;
   containerStyle?: string;
   textInputBackgroundColor?: string;

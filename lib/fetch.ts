@@ -5,9 +5,7 @@ export const fetchAPI = async (url: string, options?: RequestInit) => {
     const response = await fetch(url, options);
 
     // Log the response status and text for debugging
-    console.log("Response status:", response.status);
     const responseText = await response.text();
-    console.log("Response text:", responseText);
 
     if (!response.ok) {
       // Try to parse the error response

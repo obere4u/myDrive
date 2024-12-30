@@ -1,13 +1,16 @@
-import React, { useState } from "react";
-import GoogleTextInput from "@/components/GoogleTextInput";
-import RideCard from "@/components/RideCard";
+import React, { useEffect, useState } from "react";
+import * as Location from "expo-location";
 import RideCardSkeleton from "@/components/ui/ride-card-skeleton";
 import { icons, images } from "@/constants";
 import { Ride } from "@/types/type";
 import { useUser } from "@clerk/clerk-expo";
-import { FlatList, Image, Text, TouchableOpacity, View } from "react-native";
+import { Alert, FlatList, Image, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Map from "@/components/Map";
+import { useLocationStore } from "@/store";
+import { router } from "expo-router";
+import SearchLocationInput from "@/components/SearchLocationInput";
+import RideCard from "@/components/RideCard";
 
 const recentRide: Ride[] = [
   {
@@ -88,16 +91,73 @@ const recentRide: Ride[] = [
   },
 ];
 
+interface LocationTypes {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
 export default function Page() {
   const { user } = useUser();
+  const { setUserLocation, setDestinationLocation } = useLocationStore();
+  const [hasPermission, setHasPermission] = useState(false);
   const [loading, setIsLoading] = useState(false);
 
   const handleSignOut = () => {};
-  const destinationPress = () => {};
+  const destinationPress = (location: LocationTypes) => {
+    setDestinationLocation(location);
+    router.push("/(root)/find-ride");
+  };
 
-  // useEffect(() => {
-  //   setIsLoading(true)
-  // }, [loading])
+  useEffect(() => {
+    setIsLoading(true);
+  }, [loading]);
+
+  useEffect(() => {
+    try {
+      const requestLocation = async () => {
+        const isLocationServiceEnabled = await Location.hasServicesEnabledAsync();
+        if (!isLocationServiceEnabled) {
+          Alert.alert(
+            "Location Services Disabled",
+            "Please enable location services in your device settings to use this feature.",
+            [{ text: "OK" }],
+          );
+
+          return;
+        }
+        let { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== "granted") {
+          setHasPermission(false);
+          Alert.alert(
+            "Location Permission Denied",
+            "This feature requires location access. Please grant permission in your device settings.",
+            [{ text: "OK" }],
+          );
+          return;
+        }
+
+        let location = await Location.getCurrentPositionAsync();
+        let address = await Location.reverseGeocodeAsync({
+          latitude: location.coords?.latitude!,
+          longitude: location.coords?.longitude!,
+        });
+
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          address: `${address[0].streetNumber} ${address[0].street}, ${address[0].subregion}`,
+        });
+      };
+      requestLocation();
+    } catch (error) {
+      console.error("Error getting location:", error);
+      Alert.alert("Location Error", "Unable to retrieve your current location. Please try again.", [
+        { text: "OK" },
+      ]);
+    }
+  }, []);
 
   return (
     <SafeAreaView className="bg-general-500">
@@ -116,9 +176,9 @@ export default function Page() {
                 className="flex items-center justify-center w-10 h-10 rounded-full bg-[#f1f1f1]">
                 <Image source={icons.out} className="w-5 h-5" />
               </TouchableOpacity>
-              {/* Google text input */}
             </View>
-            <GoogleTextInput
+            {/* Search text input */}
+            <SearchLocationInput
               icon={icons.search}
               containerStyle={"bg-white shadow-md shadow-neutral-300"}
               handlePress={destinationPress}
@@ -136,8 +196,9 @@ export default function Page() {
           </>
         )}
         data={recentRide?.slice(0, 5)}
+        keyExtractor={(item, index) => `${item.ride_time}-${item.driver_id}`}
         // data={[]}
-        renderItem={({ item }) => <RideCard ride={item} />}
+        renderItem={({ item, index }) => <RideCard ride={item} />}
         className="px-3"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
